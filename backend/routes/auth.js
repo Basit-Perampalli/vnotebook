@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken')
 const JWT_SECRET = "Harryisagoodb$oy"
 
 // Create a User using: POST '/api/auth/'. Doesn't require Auth
-router.post('/', [
+router.post('/createUser', [
     body('name',"Enter a valid name").isLength({ min: 3 }),
     body('email',"Enter a valid email").isEmail({ min: 5 }),
     body('password',"Password must be of min 5 chars").isLength({ min: 5 })
@@ -33,7 +33,9 @@ router.post('/', [
             password: secPass,
         });
         const data = {
-            user:user.id
+            user:{
+                id:user.id
+            }
         }
 
         const authToken = jwt.sign(data,JWT_SECRET)
@@ -42,9 +44,50 @@ router.post('/', [
         res.json({authToken})
     } catch (error) {
         console.log(error.message);
-        res.status(500).send("some error occured")
+        res.status(500).send("Internal Server Error")
     }
         
 });
 
+
+// Authenticate a User using: POST '/api/auth/'. Doesn't require Auth
+
+router.post('/login', [
+    body('email',"Enter a valid email").isEmail({ min: 5 })
+], async (req, res) => {
+    // Check whether the email is used already
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    const {email, password} = req.body
+    try {
+        let user = await User.findOne({email})
+        if(!user){
+            return res.status(400).json({error:"Please try to login with correct credentials"})
+        }
+
+        const passCompare = await bcrypt.compare(password, user.password)
+        if(!passCompare){
+            return res.status(400).json({error:"Please try to login with correct credentials"})
+        }
+
+        const data = {
+            user:{
+                id:user.id
+            }
+        }
+
+        const authToken = jwt.sign(data,JWT_SECRET)
+        res.json(authToken)
+
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).send("Internal Server Error")
+    }
+});
+
+
 module.exports = router;
+
+
